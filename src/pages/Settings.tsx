@@ -1,21 +1,34 @@
 import { useState } from 'react';
-import { Mail, RotateCcw, ShieldCheck, Clock, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, RotateCcw, ShieldCheck, Clock, Send, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import { useData } from '../store/DataContext';
+import { useAccount, setAccount } from '../store/account';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { PageHeader, Badge } from '../components/ui';
 
-const EMAIL_KEY = 'mamshe.account.email';
-const STATUS_KEY = 'mamshe.account.emailStatus';
-
 export default function Settings() {
   const data = useData();
-  const [accountEmail, setAccountEmail] = useState(() => localStorage.getItem(EMAIL_KEY) || 'admin@mam-she.ph');
-  const [verified, setVerified] = useState(() => (localStorage.getItem(STATUS_KEY) ?? 'verified') === 'verified');
+  const account = useAccount();
+
+  // Profile (name + phone)
+  const [name, setName] = useState(account.name);
+  const [phone, setPhone] = useState(account.phone);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  // Email change
   const [newEmail, setNewEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const dirty = name.trim() !== account.name || phone.trim() !== account.phone;
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail);
+
+  function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setAccount({ name: name.trim(), phone: phone.trim() });
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 2500);
+  }
 
   async function sendVerification(e: React.FormEvent) {
     e.preventDefault();
@@ -24,7 +37,7 @@ export default function Settings() {
       setMsg({ type: 'error', text: 'Please enter a valid email address.' });
       return;
     }
-    if (newEmail.toLowerCase() === accountEmail.toLowerCase()) {
+    if (newEmail.toLowerCase() === account.email.toLowerCase()) {
       setMsg({ type: 'error', text: 'That is already your account email.' });
       return;
     }
@@ -44,15 +57,11 @@ export default function Settings() {
       return;
     }
     // Store as the new (pending) account email until the recipient confirms.
-    const email = newEmail;
-    setAccountEmail(email);
-    setVerified(false);
-    localStorage.setItem(EMAIL_KEY, email);
-    localStorage.setItem(STATUS_KEY, 'pending');
+    setAccount({ email: newEmail, emailVerified: false });
     setNewEmail('');
     setMsg({
       type: 'success',
-      text: `Verification email sent to ${email}. Open your inbox and click the confirmation link to verify the address.`,
+      text: `Verification email sent to ${newEmail}. Open your inbox and click the confirmation link to verify the address.`,
     });
   }
 
@@ -61,29 +70,54 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Account settings" />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Account settings */}
-        <div className="lg:col-span-2">
+        <div className="space-y-4 lg:col-span-2">
+          {/* Profile */}
+          <div className="card p-6">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-brand-600" />
+              <h3 className="font-bold text-slate-800">Profile</h3>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">Your name shows in the top-right of the app.</p>
+            <form onSubmit={saveProfile} className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">Name</label>
+                <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div>
+                <label className="label">Cellphone number</label>
+                <input className="input" placeholder="0917 xxx xxxx" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2 flex items-center gap-3">
+                <button type="submit" className="btn-primary" disabled={!dirty}>Save changes</button>
+                {profileSaved && (
+                  <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                    <CheckCircle2 className="h-4 w-4" /> Saved
+                  </span>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Email address */}
           <div className="card p-6">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-brand-600" />
-              <h3 className="font-bold text-slate-800">Account Settings</h3>
+              <h3 className="font-bold text-slate-800">Email Address</h3>
             </div>
-            <p className="mt-1 text-sm text-slate-500">Manage the email address for this account.</p>
+            <p className="mt-1 text-sm text-slate-500">Change the email address for this account.</p>
 
-            {/* Current email */}
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
               <div>
                 <p className="text-xs text-slate-400">Current email</p>
-                <p className="font-semibold text-slate-800">{accountEmail}</p>
+                <p className="font-semibold text-slate-800">{account.email}</p>
               </div>
-              {verified ? (
+              {account.emailVerified ? (
                 <Badge tone="emerald"><ShieldCheck className="h-3 w-3" /> Verified</Badge>
               ) : (
                 <Badge tone="amber"><Clock className="h-3 w-3" /> Pending verification</Badge>
               )}
             </div>
 
-            {/* Change email */}
             <form onSubmit={sendVerification} className="mt-5">
               <label className="label">New email address</label>
               <div className="flex flex-col gap-2 sm:flex-row">

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { useData } from '../store/DataContext';
+import { useAccount } from '../store/account';
+import { initialsFromName } from '../lib/format';
+import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +16,8 @@ import {
   Search,
   Bell,
   ChevronDown,
+  LogOut,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 
 const nav = [
@@ -26,8 +31,21 @@ const nav = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { usingSupabase } = useData();
+  const account = useAccount();
+
+  async function logout() {
+    setMenuOpen(false);
+    if (!confirm('Log out of Mam-She Financing?')) return;
+    try {
+      await supabase?.auth.signOut();
+    } catch {
+      /* ignore */
+    }
+    window.location.reload();
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -92,13 +110,45 @@ export default function Layout() {
               <Bell className="h-5 w-5" />
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
             </button>
-            <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">SE</div>
-              <div className="hidden text-left sm:block">
-                <p className="text-sm font-semibold leading-none text-slate-800">She Evangelista</p>
-                <p className="text-[11px] text-slate-400">Administrator</p>
-              </div>
-              <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" />
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                  {initialsFromName(account.name)}
+                </div>
+                <div className="hidden text-left sm:block">
+                  <p className="text-sm font-semibold leading-none text-slate-800">{account.name}</p>
+                  <p className="text-[11px] text-slate-400">{account.role}</p>
+                </div>
+                <ChevronDown className={clsx('hidden h-4 w-4 text-slate-400 transition-transform sm:block', menuOpen && 'rotate-180')} />
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div className="card absolute right-0 z-50 mt-2 w-60 p-1.5">
+                    <div className="border-b border-slate-100 px-3 py-2.5">
+                      <p className="truncate text-sm font-semibold text-slate-800">{account.name}</p>
+                      <p className="truncate text-xs text-slate-400">{account.email}</p>
+                    </div>
+                    <Link
+                      to="/settings"
+                      onClick={() => setMenuOpen(false)}
+                      className="mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                    >
+                      <SettingsIcon className="h-4 w-4 text-slate-400" /> Account settings
+                    </Link>
+                    <button
+                      onClick={logout}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4" /> Log out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
