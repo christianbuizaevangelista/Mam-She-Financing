@@ -1,11 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, Landmark, Paperclip, Upload, X } from 'lucide-react';
+import { Plus, Search, Landmark } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import type { Loan, LoanStatus, PaymentFrequency, LoanAttachment } from '../types';
 import { peso, initials, fmtDate } from '../lib/format';
 import { loanSummary, monthsToInstallments } from '../lib/loan';
-import { Avatar, StatusBadge, ProgressBar, PageHeader, Modal, EmptyState } from '../components/ui';
+import { Avatar, StatusBadge, ProgressBar, PageHeader, Modal, EmptyState, AttachmentsField } from '../components/ui';
 
 const FILTERS: ('all' | LoanStatus)[] = ['all', 'active', 'overdue', 'pending', 'paid', 'defaulted'];
 
@@ -153,15 +153,6 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
     return { n, interest, total, installment: n > 0 ? total / n : 0 };
   }, [principal, interestRate, numMonths, frequency, intervalDays]);
 
-  function addFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) setAttachments((prev) => [...prev, { name: file.name, size: file.size }]);
-    e.target.value = ''; // reset so the same file can be re-picked and a fresh slot shows
-  }
-  function removeFile(idx: number) {
-    setAttachments((prev) => prev.filter((_, i) => i !== idx));
-  }
-
   const invalid =
     !clientId ||
     !purpose ||
@@ -253,26 +244,7 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
 
         {/* Attachments — after each upload a fresh upload slot appears */}
         <div className="sm:col-span-2">
-          <label className="label">Attachments</label>
-          <div className="space-y-2">
-            {attachments.map((a, i) => (
-              <div key={i} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <span className="flex min-w-0 items-center gap-2 text-sm text-slate-700">
-                  <Paperclip className="h-4 w-4 shrink-0 text-slate-400" />
-                  <span className="truncate">{a.name}</span>
-                  <span className="shrink-0 text-xs text-slate-400">({fmtSize(a.size)})</span>
-                </span>
-                <button type="button" onClick={() => removeFile(i)} className="btn-ghost !p-1 text-slate-400 hover:text-red-600" aria-label="Remove attachment">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-brand-400 hover:bg-brand-50/40 hover:text-brand-600">
-              <Upload className="h-4 w-4" />
-              {attachments.length === 0 ? 'Upload attachment' : 'Add another attachment'}
-              <input type="file" className="hidden" onChange={addFile} />
-            </label>
-          </div>
+          <AttachmentsField attachments={attachments} onChange={setAttachments} />
         </div>
 
         {/* Amortization preview */}
@@ -306,12 +278,6 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
       </form>
     </Modal>
   );
-}
-
-function fmtSize(bytes: number): string {
-  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${bytes} B`;
 }
 
 function PreviewStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {

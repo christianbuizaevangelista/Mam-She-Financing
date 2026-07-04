@@ -1,15 +1,18 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, CreditCard, Briefcase, Landmark, Plus } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, CreditCard, Briefcase, Landmark, Plus, Pencil, Paperclip } from 'lucide-react';
 import { useData } from '../store/DataContext';
+import type { Client, Attachment } from '../types';
 import { peso, initials, creditRating, fmtDate } from '../lib/format';
 import { loanSummary } from '../lib/loan';
-import { Avatar, Badge, StatusBadge, ProgressBar, EmptyState } from '../components/ui';
+import { Avatar, Badge, StatusBadge, ProgressBar, EmptyState, Modal, AttachmentsField } from '../components/ui';
 
 export default function ClientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const data = useData();
   const client = id ? data.clientById(id) : undefined;
+  const [editing, setEditing] = useState(false);
 
   if (!client) {
     return (
@@ -53,6 +56,24 @@ export default function ClientDetail() {
             <Info icon={CreditCard} label={client.idType} value={client.idNumber} />
             <Info icon={Landmark} label="Client since" value={fmtDate(client.createdAt)} />
           </div>
+
+          {client.attachments && client.attachments.length > 0 && (
+            <div className="mt-5 border-t border-slate-100 pt-5">
+              <p className="mb-2 text-xs font-medium text-slate-400">Attachments</p>
+              <div className="space-y-1.5">
+                {client.attachments.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                    <Paperclip className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="truncate">{a.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button className="btn-secondary mt-5 w-full" onClick={() => setEditing(true)}>
+            <Pencil className="h-3.5 w-3.5" /> Edit details
+          </button>
         </div>
 
         {/* Right column */}
@@ -105,7 +126,107 @@ export default function ClientDetail() {
           )}
         </div>
       </div>
+
+      <EditClientModal open={editing} onClose={() => setEditing(false)} client={client} />
     </div>
+  );
+}
+
+function EditClientModal({ open, onClose, client }: { open: boolean; onClose: () => void; client: Client }) {
+  const { updateClient } = useData();
+  const [form, setForm] = useState<Client>(client);
+
+  // Reload the form from the client whenever it (re)opens.
+  useEffect(() => {
+    if (open) setForm(client);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, client.id]);
+
+  function set<K extends keyof Client>(key: K, value: Client[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.firstName || !form.lastName || !form.phone) return;
+    const { id, createdAt, ...patch } = form;
+    updateClient(client.id, patch);
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit Client Details" wide>
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label">First name *</label>
+          <input className="input" value={form.firstName} onChange={(e) => set('firstName', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Last name *</label>
+          <input className="input" value={form.lastName} onChange={(e) => set('lastName', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Phone *</label>
+          <input className="input" value={form.phone} onChange={(e) => set('phone', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Email</label>
+          <input className="input" type="email" value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Address</label>
+          <input className="input" value={form.address} onChange={(e) => set('address', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">City</label>
+          <input className="input" value={form.city} onChange={(e) => set('city', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Business type</label>
+          <input className="input" value={form.businessType} onChange={(e) => set('businessType', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Status</label>
+          <select className="input" value={form.status} onChange={(e) => set('status', e.target.value as Client['status'])}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="blacklisted">Blacklisted</option>
+          </select>
+        </div>
+        <div>
+          <label className="label">Credit score</label>
+          <input className="input" type="number" min={300} max={850} value={form.creditScore} onChange={(e) => set('creditScore', Number(e.target.value))} />
+        </div>
+        <div>
+          <label className="label">ID type</label>
+          <select className="input" value={form.idType} onChange={(e) => set('idType', e.target.value)}>
+            <option>PhilID</option>
+            <option>Driver's License</option>
+            <option>SSS</option>
+            <option>UMID</option>
+            <option>Passport</option>
+          </select>
+        </div>
+        <div>
+          <label className="label">ID number</label>
+          <input className="input" value={form.idNumber} onChange={(e) => set('idNumber', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label">Notes</label>
+          <textarea className="input" rows={2} value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <AttachmentsField
+            attachments={form.attachments ?? []}
+            onChange={(next: Attachment[]) => set('attachments', next)}
+          />
+        </div>
+        <div className="sm:col-span-2 mt-1 flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

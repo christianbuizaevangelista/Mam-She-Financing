@@ -1,6 +1,8 @@
 import React from 'react';
 import clsx from 'clsx';
-import { X } from 'lucide-react';
+import { X, Paperclip, Upload } from 'lucide-react';
+import type { Attachment } from '../types';
+import { fmtSize } from '../lib/format';
 
 /* ---------------- Badge ---------------- */
 type Tone = 'slate' | 'emerald' | 'green' | 'amber' | 'red' | 'blue' | 'violet';
@@ -146,6 +148,51 @@ export function EmptyState({ icon: Icon, title, hint }: { icon: React.ComponentT
       </div>
       <p className="mt-4 font-semibold text-slate-700">{title}</p>
       {hint && <p className="mt-1 text-sm text-slate-400">{hint}</p>}
+    </div>
+  );
+}
+
+/* ---------------- AttachmentsField ----------------
+   Dynamic uploader: after each upload a fresh "add another" slot appears. */
+export function AttachmentsField({
+  attachments,
+  onChange,
+  label = 'Attachments',
+}: {
+  attachments: Attachment[];
+  onChange: (next: Attachment[]) => void;
+  label?: string;
+}) {
+  function addFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) onChange([...attachments, { name: file.name, size: file.size }]);
+    e.target.value = ''; // reset so the same file can be re-picked and a fresh slot shows
+  }
+  function removeFile(idx: number) {
+    onChange(attachments.filter((_, i) => i !== idx));
+  }
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <div className="space-y-2">
+        {attachments.map((a, i) => (
+          <div key={i} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <span className="flex min-w-0 items-center gap-2 text-sm text-slate-700">
+              <Paperclip className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="truncate">{a.name}</span>
+              <span className="shrink-0 text-xs text-slate-400">({fmtSize(a.size)})</span>
+            </span>
+            <button type="button" onClick={() => removeFile(i)} className="btn-ghost !p-1 text-slate-400 hover:text-red-600" aria-label="Remove attachment">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-brand-400 hover:bg-brand-50/40 hover:text-brand-600">
+          <Upload className="h-4 w-4" />
+          {attachments.length === 0 ? 'Upload attachment' : 'Add another attachment'}
+          <input type="file" className="hidden" onChange={addFile} />
+        </label>
+      </div>
     </div>
   );
 }

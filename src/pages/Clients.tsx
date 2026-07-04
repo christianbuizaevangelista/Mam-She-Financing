@@ -5,7 +5,7 @@ import { useData } from '../store/DataContext';
 import type { Client, ClientStatus } from '../types';
 import { peso, initials, creditRating, fmtDate } from '../lib/format';
 import { loanSummary } from '../lib/loan';
-import { Avatar, Badge, StatusBadge, PageHeader, Modal, EmptyState } from '../components/ui';
+import { Avatar, Badge, StatusBadge, PageHeader, Modal, EmptyState, AttachmentsField } from '../components/ui';
 
 const BRANCH_NAMES: Record<string, string> = {
   'br-1': 'Quezon City',
@@ -138,6 +138,7 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
     creditScore: 650,
     branch: 'br-1',
     notes: '',
+    attachments: [],
   };
   const [form, setForm] = useState(empty);
 
@@ -209,6 +210,9 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
         <div>
           <label className="label">ID number</label>
           <input className="input" value={form.idNumber} onChange={(e) => set('idNumber', e.target.value)} />
+        </div>
+        <div className="sm:col-span-2">
+          <AttachmentsField attachments={form.attachments ?? []} onChange={(next) => set('attachments', next)} />
         </div>
         <div className="sm:col-span-2 mt-2 flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>

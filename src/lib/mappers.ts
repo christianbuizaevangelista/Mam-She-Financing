@@ -18,6 +18,7 @@ export const clientToRow = (c: Client) => ({
   branch: c.branch,
   created_at: c.createdAt,
   notes: c.notes ?? null,
+  attachments: c.attachments ?? null,
 });
 
 export const rowToClient = (r: any): Client => ({
@@ -36,6 +37,7 @@ export const rowToClient = (r: any): Client => ({
   branch: r.branch ?? '',
   createdAt: r.created_at,
   notes: r.notes ?? undefined,
+  attachments: r.attachments ?? undefined,
 });
 
 export const productToRow = (p: LoanProduct) => ({

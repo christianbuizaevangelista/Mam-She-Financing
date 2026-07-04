@@ -60,6 +60,7 @@ interface DataContextValue extends AppData {
   addLoan: (input: NewLoanInput) => Loan;
   setLoanStatus: (id: string, status: Loan['status']) => void;
   recordPayment: (repaymentId: string, amount: number) => void;
+  recordLoanPayment: (loanId: string, amount: number) => void;
   addProduct: (p: Omit<LoanProduct, 'id'>) => void;
   updateProduct: (id: string, patch: Partial<LoanProduct>) => void;
   resetData: () => void;
@@ -256,6 +257,44 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   }, [push]);
 
+  // Apply a lump-sum payment across a loan's unpaid installments, oldest first.
+  // Lets a client settle several installments (or the full outstanding) at once.
+  const recordLoanPayment = useCallback((loanId: string, amount: number) => {
+    setData((prev) => {
+      let remaining = amount;
+      const changed = new Map<string, Repayment>();
+      const ordered = prev.repayments
+        .filter((r) => r.loanId === loanId)
+        .sort((a, b) => a.installmentNo - b.installmentNo);
+      for (const r of ordered) {
+        if (remaining <= 0.001) break;
+        const due = r.amountDue - r.amountPaid;
+        if (due <= 0.001) continue;
+        const pay = Math.min(due, remaining);
+        remaining -= pay;
+        changed.set(
+          r.id,
+          refreshRepaymentStatus({ ...r, amountPaid: r.amountPaid + pay, paidDate: new Date().toISOString() })
+        );
+      }
+      if (changed.size === 0) return prev;
+      const repayments = prev.repayments.map((r) => changed.get(r.id) ?? r);
+      const loanRows = repayments.filter((r) => r.loanId === loanId);
+      const allPaid = loanRows.length > 0 && loanRows.every((r) => r.status === 'paid');
+      const hasOverdue = loanRows.some((r) => r.status === 'overdue');
+      const loans = prev.loans.map((l) => {
+        if (l.id !== loanId) return l;
+        let next = l;
+        if (allPaid) next = { ...l, status: 'paid' as const };
+        else if (l.status === 'overdue' && !hasOverdue) next = { ...l, status: 'active' as const };
+        if (next !== l) push(() => repo.saveLoan(next));
+        return next;
+      });
+      push(() => repo.saveRepayments([...changed.values()]));
+      return { ...prev, repayments, loans };
+    });
+  }, [push]);
+
   const addProduct = useCallback((p: Omit<LoanProduct, 'id'>) => {
     const product: LoanProduct = { ...p, id: uid('p') };
     setData((prev) => ({ ...prev, products: [...prev.products, product] }));
@@ -303,6 +342,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       addLoan,
       setLoanStatus,
       recordPayment,
+      recordLoanPayment,
       addProduct,
       updateProduct,
       resetData,
@@ -313,7 +353,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         data.repayments.filter((r) => r.loanId === loanId).sort((a, b) => a.installmentNo - b.installmentNo),
       loansForClient: (clientId) => data.loans.filter((l) => l.clientId === clientId),
     }),
-    [data, loading, usingSupabase, syncError, addClient, updateClient, addLoan, setLoanStatus, recordPayment, addProduct, updateProduct, resetData]
+    [data, loading, usingSupabase, syncError, addClient, updateClient, addLoan, setLoanStatus, recordPayment, recordLoanPayment, addProduct, updateProduct, resetData]
   );
 
   if (loading) {

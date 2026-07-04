@@ -13,6 +13,7 @@ export default function LoanDetail() {
   const data = useData();
   const loan = id ? data.loanById(id) : undefined;
   const [payTarget, setPayTarget] = useState<Repayment | null>(null);
+  const [payLoanOpen, setPayLoanOpen] = useState(false);
 
   if (!loan) {
     return (
@@ -108,9 +109,10 @@ export default function LoanDetail() {
               <p className="text-sm font-semibold text-brand-800">Next payment due</p>
               <p className="mt-1 text-xl font-bold text-slate-800">{peso(sum.nextDue.amountDue - sum.nextDue.amountPaid, { decimals: true })}</p>
               <p className="text-sm text-slate-500">Installment #{sum.nextDue.installmentNo} • {fmtDate(sum.nextDue.dueDate)}</p>
-              <button className="btn-primary mt-3 w-full" onClick={() => setPayTarget(sum.nextDue!)}>
+              <button className="btn-primary mt-3 w-full" onClick={() => setPayLoanOpen(true)}>
                 <Banknote className="h-4 w-4" /> Record Payment
               </button>
+              <p className="mt-2 text-center text-xs text-slate-400">Outstanding balance: {peso(sum.outstanding, { decimals: true })}</p>
             </div>
           )}
         </div>
@@ -159,7 +161,73 @@ export default function LoanDetail() {
       </div>
 
       <PaymentModal repayment={payTarget} onClose={() => setPayTarget(null)} />
+      <LoanPaymentModal open={payLoanOpen} onClose={() => setPayLoanOpen(false)} loanId={loan.id} />
     </div>
+  );
+}
+
+function LoanPaymentModal({ open, onClose, loanId }: { open: boolean; onClose: () => void; loanId: string }) {
+  const data = useData();
+  const loan = data.loanById(loanId);
+  const sum = loan ? loanSummary(loan, data.repayments) : null;
+  const outstanding = sum ? sum.outstanding : 0;
+  const nextRemaining = sum?.nextDue ? sum.nextDue.amountDue - sum.nextDue.amountPaid : outstanding;
+  const [amount, setAmount] = useState(nextRemaining);
+
+  useEffect(() => {
+    if (open) setAmount(nextRemaining);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (amount <= 0) return;
+    data.recordLoanPayment(loanId, Math.min(amount, outstanding));
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Record Payment">
+      <form onSubmit={submit} className="space-y-4">
+        <div className="rounded-lg bg-slate-50 p-4 text-sm">
+          {sum?.nextDue && (
+            <div className="flex justify-between">
+              <span className="text-slate-500">Next installment</span>
+              <span className="font-medium">{peso(nextRemaining, { decimals: true })}</span>
+            </div>
+          )}
+          <div className="mt-1 flex justify-between">
+            <span className="text-slate-500">Outstanding balance</span>
+            <span className="font-bold">{peso(outstanding, { decimals: true })}</span>
+          </div>
+        </div>
+        <div>
+          <label className="label">Amount received</label>
+          <input
+            className="input"
+            type="number"
+            step="0.01"
+            min={0}
+            max={outstanding}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={() => setAmount(Number(outstanding.toFixed(2)))}
+            className="mt-2 text-sm font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Pay full outstanding balance ({peso(outstanding, { decimals: true })})
+          </button>
+          <p className="mt-1 text-xs text-slate-400">Payments apply to the oldest unpaid installments first.</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn-primary"><Banknote className="h-4 w-4" /> Confirm Payment</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

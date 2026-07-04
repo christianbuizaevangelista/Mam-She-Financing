@@ -22,7 +22,8 @@ create table if not exists clients (
   credit_score int not null default 650,
   branch text,
   created_at timestamptz not null default now(),
-  notes text
+  notes text,
+  attachments jsonb                               -- [{ name, size }] supporting docs
 );
 
 create table if not exists loan_products (

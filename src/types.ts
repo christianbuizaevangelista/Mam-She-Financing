@@ -18,6 +18,7 @@ export interface Client {
   branch: string;
   createdAt: string; // ISO date
   notes?: string;
+  attachments?: Attachment[]; // supporting documents (IDs, permits, etc.)
 }
 
 export type PaymentFrequency = 'daily' | 'weekly' | 'biweekly' | 'bimonthly' | 'monthly';
@@ -33,10 +34,13 @@ export interface LoanProduct {
   active: boolean;
 }
 
-export interface LoanAttachment {
+export interface Attachment {
   name: string;
   size: number; // bytes
 }
+
+/** Backward-compatible alias (loans referenced this name first). */
+export type LoanAttachment = Attachment;
 
 export type LoanStatus =
   | 'pending'
