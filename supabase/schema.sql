@@ -51,7 +51,8 @@ create table if not exists loans (
   application_date timestamptz not null default now(),
   disbursement_date timestamptz,
   officer text,                                   -- legacy loan officer
-  guarantor text
+  guarantor text,
+  attachments jsonb                               -- [{ name, size }] supporting docs
 );
 
 create table if not exists repayments (

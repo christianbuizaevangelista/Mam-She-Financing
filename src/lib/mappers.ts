@@ -76,6 +76,7 @@ export const loanToRow = (l: Loan) => ({
   disbursement_date: l.disbursementDate ?? null,
   officer: l.officer ?? null,
   guarantor: l.guarantor ?? null,
+  attachments: l.attachments ?? null,
 });
 
 export const rowToLoan = (r: any): Loan => ({
@@ -94,6 +95,7 @@ export const rowToLoan = (r: any): Loan => ({
   disbursementDate: r.disbursement_date ?? undefined,
   officer: r.officer ?? undefined,
   guarantor: r.guarantor ?? undefined,
+  attachments: r.attachments ?? undefined,
 });
 
 export const repaymentToRow = (r: Repayment) => ({

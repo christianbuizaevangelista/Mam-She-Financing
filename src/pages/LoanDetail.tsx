@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, XCircle, Banknote, User } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Banknote, User, Paperclip } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import { peso, pct, fmtDate, initials } from '../lib/format';
-import { loanSummary, installmentAmount, termCount } from '../lib/loan';
+import { loanSummary, installmentAmount } from '../lib/loan';
 import { Avatar, StatusBadge, ProgressBar, Modal } from '../components/ui';
 import type { Repayment } from '../types';
 
@@ -66,13 +66,27 @@ export default function LoanDetail() {
 
         {/* Terms */}
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-4 lg:grid-cols-6">
-          <Term label="Interest" value={`${pct(loan.monthlyRate)}${loan.numTerms != null ? '/term' : '/mo'}`} />
-          <Term label="Terms" value={`${termCount(loan)} payments`} />
+          <Term label="Interest" value={`${pct(loan.monthlyRate)}/mo`} />
+          <Term label="Term" value={`${loan.termMonths} month${loan.termMonths === 1 ? '' : 's'}`} />
           <Term label="Frequency" value={freqText(loan)} />
           <Term label="Installment" value={peso(installmentAmount(loan), { decimals: true })} />
           <Term label="Disbursed" value={fmtDate(loan.disbursementDate)} />
           <Term label="Guarantor" value={loan.guarantor ?? loan.officer ?? '—'} />
         </div>
+
+        {loan.attachments && loan.attachments.length > 0 && (
+          <div className="mt-5 border-t border-slate-100 pt-5">
+            <p className="mb-2 text-xs font-medium text-slate-400">Attachments</p>
+            <div className="flex flex-wrap gap-2">
+              {loan.attachments.map((a, i) => (
+                <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-700">
+                  <Paperclip className="h-3.5 w-3.5 text-slate-400" />
+                  {a.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary + schedule */}

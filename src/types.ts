@@ -33,6 +33,11 @@ export interface LoanProduct {
   active: boolean;
 }
 
+export interface LoanAttachment {
+  name: string;
+  size: number; // bytes
+}
+
 export type LoanStatus =
   | 'pending'
   | 'approved'
@@ -61,6 +66,7 @@ export interface Loan {
   disbursementDate?: string; // ISO
   officer?: string; // legacy loan-officer field
   guarantor?: string; // person guaranteeing the loan
+  attachments?: LoanAttachment[]; // supporting documents
 }
 
 export type RepaymentStatus = 'pending' | 'paid' | 'partial' | 'overdue';

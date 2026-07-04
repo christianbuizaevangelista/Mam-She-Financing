@@ -27,6 +27,30 @@ export function termCount(loan: Pick<Loan, 'numTerms' | 'frequency' | 'termMonth
   return loan.numTerms ?? installmentsFor(loan.frequency, loan.termMonths);
 }
 
+/**
+ * Convert a loan duration in months into a number of installments, based on
+ * the payment frequency (approximating a month as 30 days for daily loans).
+ */
+export function monthsToInstallments(
+  months: number,
+  frequency: PaymentFrequency,
+  intervalDays = 15
+): number {
+  const m = Math.max(0, months);
+  switch (frequency) {
+    case 'daily':
+      return Math.max(1, Math.round((m * 30) / (intervalDays || 1)));
+    case 'weekly':
+      return Math.max(1, Math.round(m * 4));
+    case 'biweekly':
+    case 'bimonthly':
+      return Math.max(1, Math.round(m * 2));
+    case 'monthly':
+    default:
+      return Math.max(1, Math.round(m));
+  }
+}
+
 export function totalInterest(principal: number, monthlyRate: number, termMonths: number): number {
   return principal * monthlyRate * termMonths;
 }

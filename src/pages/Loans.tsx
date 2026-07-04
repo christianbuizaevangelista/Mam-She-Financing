@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, Landmark } from 'lucide-react';
+import { Plus, Search, Landmark, Paperclip, Upload, X } from 'lucide-react';
 import { useData } from '../store/DataContext';
-import type { Loan, LoanStatus, PaymentFrequency } from '../types';
+import type { Loan, LoanStatus, PaymentFrequency, LoanAttachment } from '../types';
 import { peso, initials, fmtDate } from '../lib/format';
-import { loanSummary } from '../lib/loan';
+import { loanSummary, monthsToInstallments } from '../lib/loan';
 import { Avatar, StatusBadge, ProgressBar, PageHeader, Modal, EmptyState } from '../components/ui';
 
 const FILTERS: ('all' | LoanStatus)[] = ['all', 'active', 'overdue', 'pending', 'paid', 'defaulted'];
@@ -131,12 +131,13 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
   const data = useData();
   const [clientId, setClientId] = useState(preselectClient ?? '');
   const [principal, setPrincipal] = useState(10000);
-  const [interestRate, setInterestRate] = useState(3); // % per payment term
-  const [numTerms, setNumTerms] = useState(6);
+  const [interestRate, setInterestRate] = useState(3); // % per month
+  const [numMonths, setNumMonths] = useState(6);
   const [frequency, setFrequency] = useState<PaymentFrequency>('monthly');
   const [intervalDays, setIntervalDays] = useState(15);
   const [purpose, setPurpose] = useState('');
   const [guarantor, setGuarantor] = useState('');
+  const [attachments, setAttachments] = useState<LoanAttachment[]>([]);
   const [disburse, setDisburse] = useState(true);
 
   useEffect(() => {
@@ -145,11 +146,21 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
 
   const preview = useMemo(() => {
     const rate = (Number(interestRate) || 0) / 100;
-    const n = Math.max(0, Math.floor(Number(numTerms) || 0));
-    const interest = principal * rate * n;
+    const months = Math.max(0, Number(numMonths) || 0);
+    const n = months > 0 ? monthsToInstallments(months, frequency, Number(intervalDays) || 15) : 0;
+    const interest = principal * rate * months; // flat: per-month rate over the term
     const total = principal + interest;
     return { n, interest, total, installment: n > 0 ? total / n : 0 };
-  }, [principal, interestRate, numTerms]);
+  }, [principal, interestRate, numMonths, frequency, intervalDays]);
+
+  function addFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) setAttachments((prev) => [...prev, { name: file.name, size: file.size }]);
+    e.target.value = ''; // reset so the same file can be re-picked and a fresh slot shows
+  }
+  function removeFile(idx: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   const invalid =
     !clientId ||
@@ -157,7 +168,7 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
     !guarantor ||
     principal <= 0 ||
     Number(interestRate) < 0 ||
-    preview.n < 1 ||
+    Number(numMonths) < 1 ||
     (frequency === 'daily' && Number(intervalDays) < 1);
 
   function submit(e: React.FormEvent) {
@@ -167,11 +178,12 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
       clientId,
       principal,
       interestRate: Number(interestRate),
-      numTerms: preview.n,
+      numMonths: Number(numMonths),
       frequency,
       intervalDays: frequency === 'daily' ? Number(intervalDays) : undefined,
       purpose,
       guarantor,
+      attachments,
       disburse,
     });
     onClose();
@@ -183,8 +195,9 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
     setGuarantor('');
     setPrincipal(10000);
     setInterestRate(3);
-    setNumTerms(6);
+    setNumMonths(6);
     setFrequency('monthly');
+    setAttachments([]);
   }
 
   return (
@@ -205,7 +218,7 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
           <input className="input" type="number" min={1} value={principal} onChange={(e) => setPrincipal(Number(e.target.value))} required />
         </div>
         <div>
-          <label className="label">Interest rate (% per term) *</label>
+          <label className="label">Interest rate (% per month) *</label>
           <input className="input" type="number" step="0.1" min={0} value={interestRate} onChange={(e) => setInterestRate(Number(e.target.value))} required />
         </div>
 
@@ -214,8 +227,8 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
           <input className="input" placeholder="Full name of guarantor" value={guarantor} onChange={(e) => setGuarantor(e.target.value)} required />
         </div>
         <div>
-          <label className="label">Number of payment terms *</label>
-          <input className="input" type="number" min={1} value={numTerms} onChange={(e) => setNumTerms(Number(e.target.value))} required />
+          <label className="label">Number of months *</label>
+          <input className="input" type="number" min={1} value={numMonths} onChange={(e) => setNumMonths(Number(e.target.value))} required />
         </div>
 
         <div className={frequency === 'daily' ? '' : 'sm:col-span-2'}>
@@ -236,6 +249,30 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
         <div className="sm:col-span-2">
           <label className="label">Purpose *</label>
           <input className="input" placeholder="e.g. Restock sari-sari store inventory" value={purpose} onChange={(e) => setPurpose(e.target.value)} required />
+        </div>
+
+        {/* Attachments — after each upload a fresh upload slot appears */}
+        <div className="sm:col-span-2">
+          <label className="label">Attachments</label>
+          <div className="space-y-2">
+            {attachments.map((a, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2 text-sm text-slate-700">
+                  <Paperclip className="h-4 w-4 shrink-0 text-slate-400" />
+                  <span className="truncate">{a.name}</span>
+                  <span className="shrink-0 text-xs text-slate-400">({fmtSize(a.size)})</span>
+                </span>
+                <button type="button" onClick={() => removeFile(i)} className="btn-ghost !p-1 text-slate-400 hover:text-red-600" aria-label="Remove attachment">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-brand-400 hover:bg-brand-50/40 hover:text-brand-600">
+              <Upload className="h-4 w-4" />
+              {attachments.length === 0 ? 'Upload attachment' : 'Add another attachment'}
+              <input type="file" className="hidden" onChange={addFile} />
+            </label>
+          </div>
         </div>
 
         {/* Amortization preview */}
@@ -269,6 +306,12 @@ function NewLoanModal({ open, onClose, preselectClient }: { open: boolean; onClo
       </form>
     </Modal>
   );
+}
+
+function fmtSize(bytes: number): string {
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
 }
 
 function PreviewStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState,
 import dayjs from 'dayjs';
 import type { AppData, Client, Loan, LoanProduct, Repayment } from '../types';
 import { seedData } from '../data/seed';
-import { buildSchedule, loanSummary, refreshRepaymentStatus } from '../lib/loan';
+import { buildSchedule, loanSummary, refreshRepaymentStatus, monthsToInstallments } from '../lib/loan';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { emptyData } from '../lib/mappers';
 import * as repo from './repo';
@@ -73,12 +73,13 @@ interface DataContextValue extends AppData {
 export interface NewLoanInput {
   clientId: string;
   principal: number;
-  interestRate: number; // percent per payment term, e.g. 3 for 3%
-  numTerms: number; // number of installments
+  interestRate: number; // percent per month, e.g. 3 for 3%/mo
+  numMonths: number; // loan duration in months
   frequency: import('../types').PaymentFrequency;
   intervalDays?: number; // used when frequency === 'daily'
   purpose: string;
   guarantor: string;
+  attachments?: import('../types').LoanAttachment[];
   disburse: boolean;
 }
 
@@ -165,22 +166,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const addLoan = useCallback((input: NewLoanInput) => {
     const now = dayjs();
-    // Manual loan: interest rate is per term, and numTerms is the installment
-    // count. Storing termMonths = numTerms keeps the flat-interest formula
-    // (principal * monthlyRate * termMonths) correct for these loans too.
-    const ratePerTerm = input.interestRate / 100;
+    // Manual loan: interest is a flat rate per month over `numMonths`, and the
+    // installment count is derived from the payment frequency. Total interest
+    // stays principal * monthlyRate * termMonths.
+    const monthlyRate = input.interestRate / 100;
+    const numTerms = monthsToInstallments(input.numMonths, input.frequency, input.intervalDays ?? 15);
     const loan: Loan = {
       id: uid('l'),
       clientId: input.clientId,
       principal: input.principal,
-      monthlyRate: ratePerTerm,
-      termMonths: input.numTerms,
-      numTerms: input.numTerms,
+      monthlyRate,
+      termMonths: input.numMonths,
+      numTerms,
       intervalDays: input.frequency === 'daily' ? input.intervalDays : undefined,
       frequency: input.frequency,
       status: input.disburse ? 'active' : 'pending',
       purpose: input.purpose,
       guarantor: input.guarantor,
+      attachments: input.attachments && input.attachments.length ? input.attachments : undefined,
       applicationDate: now.toISOString(),
       disbursementDate: input.disburse ? now.toISOString() : undefined,
     };
