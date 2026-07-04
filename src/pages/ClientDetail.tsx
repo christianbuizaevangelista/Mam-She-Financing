@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, CreditCard, Briefcase, Landmark, Plus, Pencil, Paperclip } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, MapPin, CreditCard, Briefcase, Landmark, Plus, Pencil, Paperclip, Camera } from 'lucide-react';
 import { useData } from '../store/DataContext';
 import type { Client, Attachment } from '../types';
 import { peso, initials, creditRating, fmtDate } from '../lib/format';
 import { loanSummary } from '../lib/loan';
+import { fileToResizedDataUrl } from '../lib/image';
 import { Avatar, Badge, StatusBadge, ProgressBar, EmptyState, Modal, AttachmentsField } from '../components/ui';
 
 export default function ClientDetail() {
@@ -29,6 +30,18 @@ export default function ClientDetail() {
   const totalBorrowed = loans.reduce((s, l) => s + l.principal, 0);
   const rating = creditRating(client.creditScore);
 
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !client) return;
+    try {
+      const url = await fileToResizedDataUrl(file);
+      data.updateClient(client.id, { photoUrl: url });
+    } catch {
+      /* ignore bad image */
+    }
+  }
+
   return (
     <div>
       <button onClick={() => navigate(-1)} className="btn-ghost mb-4 -ml-2">
@@ -39,9 +52,20 @@ export default function ClientDetail() {
         {/* Profile card */}
         <div className="card p-6 lg:col-span-1">
           <div className="flex flex-col items-center text-center">
-            <Avatar initials={initials(client.firstName, client.lastName)} size="lg" />
+            <label className="group relative cursor-pointer" title="Change photo">
+              <Avatar initials={initials(client.firstName, client.lastName)} photoUrl={client.photoUrl} size="lg" />
+              <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white ring-2 ring-white transition-colors group-hover:bg-brand-700">
+                <Camera className="h-3.5 w-3.5" />
+              </span>
+              <input type="file" accept="image/*" className="hidden" onChange={onPhoto} />
+            </label>
             <h2 className="mt-3 text-xl font-bold text-slate-800">{client.firstName} {client.lastName}</h2>
             <p className="text-sm text-slate-500">{client.businessType}</p>
+            {client.photoUrl && (
+              <button className="mt-1 text-xs font-medium text-slate-400 hover:text-red-600" onClick={() => data.updateClient(client.id, { photoUrl: undefined })}>
+                Remove photo
+              </button>
+            )}
             <div className="mt-2 flex items-center gap-2">
               <StatusBadge status={client.status} />
               <Badge tone={rating.tone as any}>{rating.label} • {client.creditScore}</Badge>

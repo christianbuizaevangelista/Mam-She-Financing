@@ -46,7 +46,7 @@ export default function LoanDetail() {
             <p className="mt-1 text-sm text-slate-500">{product?.name ?? 'Custom loan'} • {loan.purpose}</p>
             {client && (
               <Link to={`/clients/${client.id}`} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-sm hover:bg-slate-100">
-                <Avatar initials={initials(client.firstName, client.lastName)} size="sm" />
+                <Avatar initials={initials(client.firstName, client.lastName)} photoUrl={client.photoUrl} size="sm" />
                 <span className="font-medium text-slate-700">{client.firstName} {client.lastName}</span>
                 <User className="h-3.5 w-3.5 text-slate-400" />
               </Link>

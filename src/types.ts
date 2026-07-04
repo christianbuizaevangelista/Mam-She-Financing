@@ -19,6 +19,7 @@ export interface Client {
   createdAt: string; // ISO date
   notes?: string;
   attachments?: Attachment[]; // supporting documents (IDs, permits, etc.)
+  photoUrl?: string; // profile photo (resized data URL)
 }
 
 export type PaymentFrequency = 'daily' | 'weekly' | 'biweekly' | 'bimonthly' | 'monthly';

@@ -95,7 +95,7 @@ export default function Loans() {
                     <tr key={loan.id} className="hover:bg-slate-50">
                       <td className="td">
                         <Link to={`/loans/${loan.id}`} className="flex items-center gap-2.5">
-                          <Avatar initials={c ? initials(c.firstName, c.lastName) : '??'} size="sm" />
+                          <Avatar initials={c ? initials(c.firstName, c.lastName) : '??'} photoUrl={c?.photoUrl} size="sm" />
                           <div>
                             <p className="font-medium text-slate-700">{c?.firstName} {c?.lastName}</p>
                             <p className="text-xs text-slate-400">{fmtDate(loan.applicationDate)}</p>

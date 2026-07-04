@@ -97,8 +97,11 @@ export function ProgressBar({ value, tone = 'brand' }: { value: number; tone?: '
 }
 
 /* ---------------- Avatar ---------------- */
-export function Avatar({ initials, size = 'md' }: { initials: string; size?: 'sm' | 'md' | 'lg' }) {
+export function Avatar({ initials, photoUrl, size = 'md' }: { initials: string; photoUrl?: string; size?: 'sm' | 'md' | 'lg' }) {
   const sizes = { sm: 'h-8 w-8 text-xs', md: 'h-10 w-10 text-sm', lg: 'h-14 w-14 text-lg' };
+  if (photoUrl) {
+    return <img src={photoUrl} alt={initials} className={clsx('rounded-full object-cover', sizes[size])} />;
+  }
   return (
     <div className={clsx('flex items-center justify-center rounded-full bg-brand-100 font-bold text-brand-700', sizes[size])}>
       {initials}

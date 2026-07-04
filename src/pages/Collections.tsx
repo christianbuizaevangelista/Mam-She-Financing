@@ -96,7 +96,7 @@ export default function Collections() {
                     <tr key={r.id} className="hover:bg-slate-50">
                       <td className="td">
                         <Link to={`/clients/${client.id}`} className="flex items-center gap-2.5">
-                          <Avatar initials={initials(client.firstName, client.lastName)} size="sm" />
+                          <Avatar initials={initials(client.firstName, client.lastName)} photoUrl={client.photoUrl} size="sm" />
                           <div>
                             <p className="font-medium text-slate-700">{client.firstName} {client.lastName}</p>
                             <p className="text-xs text-slate-400">{client.phone}</p>
@@ -156,7 +156,7 @@ function CollectModal({ repayment, onClose }: { repayment: Repayment | null; onC
         <form onSubmit={submit} className="space-y-4">
           {client && (
             <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
-              <Avatar initials={initials(client.firstName, client.lastName)} size="md" />
+              <Avatar initials={initials(client.firstName, client.lastName)} photoUrl={client.photoUrl} size="md" />
               <div>
                 <p className="font-semibold text-slate-800">{client.firstName} {client.lastName}</p>
                 <p className="text-sm text-slate-500">Installment #{repayment.installmentNo} • due {fmtDate(repayment.dueDate)}</p>

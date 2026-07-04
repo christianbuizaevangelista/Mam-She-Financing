@@ -145,7 +145,7 @@ export default function Dashboard() {
               if (!client) return null;
               return (
                 <Link key={r.id} to={`/loans/${r.loanId}`} className="flex items-center gap-3 rounded-lg p-2 hover:bg-slate-50">
-                  <Avatar initials={initials(client.firstName, client.lastName)} size="sm" />
+                  <Avatar initials={initials(client.firstName, client.lastName)} photoUrl={client.photoUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-700">{client.firstName} {client.lastName}</p>
                     <p className="text-xs text-slate-400">Installment #{r.installmentNo} • {fmtDate(r.dueDate)}</p>
@@ -185,7 +185,7 @@ export default function Dashboard() {
                     <tr key={loan.id} className="hover:bg-slate-50">
                       <td className="td">
                         <Link to={`/loans/${loan.id}`} className="flex items-center gap-2.5">
-                          <Avatar initials={client ? initials(client.firstName, client.lastName) : '??'} size="sm" />
+                          <Avatar initials={client ? initials(client.firstName, client.lastName) : '??'} photoUrl={client?.photoUrl} size="sm" />
                           <span className="font-medium text-slate-700">{client?.firstName} {client?.lastName}</span>
                         </Link>
                       </td>

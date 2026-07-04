@@ -1,87 +1,123 @@
 import { useState } from 'react';
-import { Plus, Package, Building2, RotateCcw, Power } from 'lucide-react';
+import { Mail, RotateCcw, ShieldCheck, Clock, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useData } from '../store/DataContext';
-import type { LoanProduct, PaymentFrequency } from '../types';
-import { peso, pct } from '../lib/format';
-import { PageHeader, Badge, Modal } from '../components/ui';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { PageHeader, Badge } from '../components/ui';
+
+const EMAIL_KEY = 'mamshe.account.email';
+const STATUS_KEY = 'mamshe.account.emailStatus';
 
 export default function Settings() {
   const data = useData();
-  const [showProduct, setShowProduct] = useState(false);
+  const [accountEmail, setAccountEmail] = useState(() => localStorage.getItem(EMAIL_KEY) || 'admin@mam-she.ph');
+  const [verified, setVerified] = useState(() => (localStorage.getItem(STATUS_KEY) ?? 'verified') === 'verified');
+  const [newEmail, setNewEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail);
+
+  async function sendVerification(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    if (!validEmail) {
+      setMsg({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
+    if (newEmail.toLowerCase() === accountEmail.toLowerCase()) {
+      setMsg({ type: 'error', text: 'That is already your account email.' });
+      return;
+    }
+    if (!isSupabaseConfigured || !supabase) {
+      setMsg({ type: 'error', text: 'Email service is not configured (Supabase required).' });
+      return;
+    }
+    setBusy(true);
+    // Sends a real verification email to the new address via Supabase Auth.
+    const { error } = await supabase.auth.signInWithOtp({
+      email: newEmail,
+      options: { shouldCreateUser: true },
+    });
+    setBusy(false);
+    if (error) {
+      setMsg({ type: 'error', text: error.message });
+      return;
+    }
+    // Store as the new (pending) account email until the recipient confirms.
+    const email = newEmail;
+    setAccountEmail(email);
+    setVerified(false);
+    localStorage.setItem(EMAIL_KEY, email);
+    localStorage.setItem(STATUS_KEY, 'pending');
+    setNewEmail('');
+    setMsg({
+      type: 'success',
+      text: `Verification email sent to ${email}. Open your inbox and click the confirmation link to verify the address.`,
+    });
+  }
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Loan products, branches & data" />
+      <PageHeader title="Settings" subtitle="Account settings" />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Loan products */}
+        {/* Account settings */}
         <div className="lg:col-span-2">
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-brand-600" />
-                <h3 className="font-bold text-slate-800">Loan Products</h3>
+          <div className="card p-6">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-brand-600" />
+              <h3 className="font-bold text-slate-800">Account Settings</h3>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">Manage the email address for this account.</p>
+
+            {/* Current email */}
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div>
+                <p className="text-xs text-slate-400">Current email</p>
+                <p className="font-semibold text-slate-800">{accountEmail}</p>
               </div>
-              <button className="btn-primary !py-1.5 text-sm" onClick={() => setShowProduct(true)}>
-                <Plus className="h-3.5 w-3.5" /> Add Product
-              </button>
+              {verified ? (
+                <Badge tone="emerald"><ShieldCheck className="h-3 w-3" /> Verified</Badge>
+              ) : (
+                <Badge tone="amber"><Clock className="h-3 w-3" /> Pending verification</Badge>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="th">Product</th>
-                    <th className="th">Rate/mo</th>
-                    <th className="th">Term</th>
-                    <th className="th">Amount range</th>
-                    <th className="th">Frequency</th>
-                    <th className="th text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.products.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50">
-                      <td className="td font-medium text-slate-700">{p.name}</td>
-                      <td className="td">{pct(p.monthlyRate)}</td>
-                      <td className="td">{p.termMonths} mo</td>
-                      <td className="td text-slate-500">{peso(p.minAmount)} – {peso(p.maxAmount)}</td>
-                      <td className="td capitalize">{p.frequency}</td>
-                      <td className="td text-right">
-                        <button
-                          onClick={() => data.updateProduct(p.id, { active: !p.active })}
-                          className="inline-flex items-center gap-1.5"
-                          title="Toggle active"
-                        >
-                          <Badge tone={p.active ? 'emerald' : 'slate'}>
-                            <Power className="h-3 w-3" /> {p.active ? 'Active' : 'Off'}
-                          </Badge>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+            {/* Change email */}
+            <form onSubmit={sendVerification} className="mt-5">
+              <label className="label">New email address</label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="new.email@example.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+                <button type="submit" className="btn-primary shrink-0" disabled={busy}>
+                  <Send className="h-4 w-4" /> {busy ? 'Sending…' : 'Send verification'}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                A verification email will be sent to the new address. The change takes effect once it's confirmed.
+              </p>
+            </form>
+
+            {msg && (
+              <div
+                className={`mt-4 flex items-start gap-2 rounded-lg px-4 py-3 text-sm ${
+                  msg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                }`}
+              >
+                {msg.type === 'success' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+                <span>{msg.text}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Branches + data */}
-        <div className="space-y-4">
-          <div className="card overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-              <Building2 className="h-5 w-5 text-brand-600" />
-              <h3 className="font-bold text-slate-800">Branches</h3>
-            </div>
-            <div className="divide-y divide-slate-100">
-              {data.branches.map((b) => (
-                <div key={b.id} className="px-5 py-3.5">
-                  <p className="font-medium text-slate-700">{b.name}</p>
-                  <p className="text-xs text-slate-400">{b.address}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
+        {/* Demo data */}
+        <div>
           <div className="card p-5">
             <div className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-amber-600" />
@@ -103,71 +139,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-
-      <ProductModal open={showProduct} onClose={() => setShowProduct(false)} />
     </div>
-  );
-}
-
-function ProductModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { addProduct } = useData();
-  const [form, setForm] = useState<Omit<LoanProduct, 'id'>>({
-    name: '',
-    monthlyRate: 0.03,
-    termMonths: 6,
-    minAmount: 5000,
-    maxAmount: 50000,
-    frequency: 'monthly',
-    active: true,
-  });
-
-  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name) return;
-    addProduct(form);
-    onClose();
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Add Loan Product">
-      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="label">Product name *</label>
-          <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required />
-        </div>
-        <div>
-          <label className="label">Monthly interest (%)</label>
-          <input className="input" type="number" step="0.1" value={form.monthlyRate * 100} onChange={(e) => set('monthlyRate', Number(e.target.value) / 100)} />
-        </div>
-        <div>
-          <label className="label">Term (months)</label>
-          <input className="input" type="number" value={form.termMonths} onChange={(e) => set('termMonths', Number(e.target.value))} />
-        </div>
-        <div>
-          <label className="label">Min amount</label>
-          <input className="input" type="number" value={form.minAmount} onChange={(e) => set('minAmount', Number(e.target.value))} />
-        </div>
-        <div>
-          <label className="label">Max amount</label>
-          <input className="input" type="number" value={form.maxAmount} onChange={(e) => set('maxAmount', Number(e.target.value))} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="label">Payment frequency</label>
-          <select className="input" value={form.frequency} onChange={(e) => set('frequency', e.target.value as PaymentFrequency)}>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Bi-weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
-        <div className="sm:col-span-2 mt-1 flex justify-end gap-2">
-          <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn-primary">Add Product</button>
-        </div>
-      </form>
-    </Modal>
   );
 }

@@ -19,6 +19,7 @@ export const clientToRow = (c: Client) => ({
   created_at: c.createdAt,
   notes: c.notes ?? null,
   attachments: c.attachments ?? null,
+  photo_url: c.photoUrl ?? null,
 });
 
 export const rowToClient = (r: any): Client => ({
@@ -38,6 +39,7 @@ export const rowToClient = (r: any): Client => ({
   createdAt: r.created_at,
   notes: r.notes ?? undefined,
   attachments: r.attachments ?? undefined,
+  photoUrl: r.photo_url ?? undefined,
 });
 
 export const productToRow = (p: LoanProduct) => ({

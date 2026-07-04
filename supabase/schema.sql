@@ -23,7 +23,8 @@ create table if not exists clients (
   branch text,
   created_at timestamptz not null default now(),
   notes text,
-  attachments jsonb                               -- [{ name, size }] supporting docs
+  attachments jsonb,                              -- [{ name, size }] supporting docs
+  photo_url text                                  -- profile photo (resized data URL)
 );
 
 create table if not exists loan_products (

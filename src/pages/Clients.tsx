@@ -79,7 +79,7 @@ export default function Clients() {
             return (
               <Link key={c.id} to={`/clients/${c.id}`} className="card p-5 transition-shadow hover:shadow-lg">
                 <div className="flex items-start gap-3">
-                  <Avatar initials={initials(c.firstName, c.lastName)} size="lg" />
+                  <Avatar initials={initials(c.firstName, c.lastName)} photoUrl={c.photoUrl} size="lg" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate font-bold text-slate-800">{c.firstName} {c.lastName}</p>
