@@ -15,5 +15,9 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
     })
   : null;
 
-/** The single owner account allowed to log in. */
+/** The owner account. Only this address can set a password on first run. */
 export const OWNER_EMAIL = 'teachandlearn38@gmail.com';
+
+/** Shared demo account for trying/revising the app before the official launch. */
+export const DEMO_EMAIL = 'demo@mam-she.ph';
+export const DEMO_PASSWORD = 'MamSheDemo2026';
