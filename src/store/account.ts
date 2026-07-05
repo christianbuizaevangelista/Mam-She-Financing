@@ -13,9 +13,9 @@ const KEY = 'mamshe.account.v1';
 
 const DEFAULT: Account = {
   name: 'She Evangelista',
-  role: 'Administrator',
+  role: 'Owner',
   phone: '0917 000 0000',
-  email: 'admin@mam-she.ph',
+  email: 'teachandlearn38@gmail.com',
   emailVerified: true,
 };
 
