@@ -46,11 +46,9 @@ export default function Settings() {
       return;
     }
     setBusy(true);
-    // Sends a real verification email to the new address via Supabase Auth.
-    const { error } = await supabase.auth.signInWithOtp({
-      email: newEmail,
-      options: { shouldCreateUser: true },
-    });
+    // Changes the account's login email — Supabase sends a confirmation link
+    // to the new address, and the change applies once it's confirmed.
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
     setBusy(false);
     if (error) {
       setMsg({ type: 'error', text: error.message });

@@ -3,8 +3,8 @@ import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { useData } from '../store/DataContext';
 import { useAccount } from '../store/account';
+import { useAuth } from '../store/auth';
 import { initialsFromName } from '../lib/format';
-import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard,
   Users,
@@ -35,16 +35,12 @@ export default function Layout() {
   const location = useLocation();
   const { usingSupabase } = useData();
   const account = useAccount();
+  const { signOut } = useAuth();
 
   async function logout() {
     setMenuOpen(false);
     if (!confirm('Log out of Mam-She Financing?')) return;
-    try {
-      await supabase?.auth.signOut();
-    } catch {
-      /* ignore */
-    }
-    window.location.reload();
+    await signOut(); // AuthProvider swaps to the login screen on sign-out
   }
 
   return (

@@ -11,6 +11,9 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(url!, anonKey!, {
-      auth: { persistSession: false },
+      auth: { persistSession: true, autoRefreshToken: true },
     })
   : null;
+
+/** The single owner account allowed to log in. */
+export const OWNER_EMAIL = 'teachandlearn38@gmail.com';
